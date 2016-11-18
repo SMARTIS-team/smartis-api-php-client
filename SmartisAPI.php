@@ -7,26 +7,38 @@
  */
 class Smartis_API {
 
-    //const API_URL       = 'https://stat.smart-is.ru/api/';
-    const API_URL       = 'http://localhost:8888/id108dev/api/';
-    const API_TOKEN     = 'wYKvWFkfz4JvFUNkUR0A';
-    const API_SIGNATURE = 'gO3Em6wq9MWlr3Zo';
+    //Статичные параметры для одного приложения
+    const API_URL       = 'https://stat.smart-is.ru/api/';
+    const API_TOKEN     = 'INSERT_YOUR_SMARTIS_API_TOKEN';
+    const API_SIGNATURE = 'INSERT_YOUR_SMARTIS_API_SIGNATURE';
 
-    public static $CLIENT_ID    = '9';
-    public static $CLIENT_TOKEN = 'htRotk53rn3kW5n3k5U63m2fh5';
+    //Одно приложение может работать для нескольких клиентов. Запросите данные у службы поддержки support@smart-is.ru
+    public static $CLIENT_ID    = 'INSERT_YOUR_SMARTIS_CLIENT_ID';
+
 
     const HTTP_INTERFACE = 'auto'; //'auto': autodetect, 'curl' or 'fopen'
+
+    public $REQUEST_PARAMS = [];
+    public $RESULT = '';
 
     function __construct($POST = Array()){
 
         if(!empty($POST['action']) && preg_match("/[$#&?><\'\"]/" , $POST['action'])==NULL){
 
             if(method_exists(__CLASS__, $POST['action'])){
-                echo '<pre>'.print_r(json_decode($this->$POST['action']($POST), true), true).'</pre>';
+                 $this->$POST['action']($POST);
             }
         }
     }
 
+    /**
+     * Непосредственное выполнение запроса с учетом всех настроек и переданных параметров
+     *
+     * @param $method
+     * @param array $POST
+     * @return bool|string
+     * @throws Exception
+     */
     function apiRequest($method, $POST = Array()){
 
         if(empty($method)) RETURN false;
@@ -39,16 +51,25 @@ class Smartis_API {
         else
             $interface = self::HTTP_INTERFACE;
 
+        $this->REQUEST_PARAMS = $POST;
+
         switch ($interface) {
             case 'curl':
-                RETURN $this->_curlRequest($method, $POST);
+                $this->RESULT = $this->_curlRequest($method, $POST);
             case 'fopen':
-                RETURN $this->_fopenRequest($method, $POST);
+                $this->RESULT = $this->_fopenRequest($method, $POST);
             default:
                 throw new Exception('Invalid http interface defined. No such interface "' . self::HTTP_INTERFACE . '"');
         }
+
+        RETURN $this->RESULT;
     }
 
+    /**
+     * Метод создает цифровую подпись для отправляемого запроса. Подробнее https://stat.smart-is.ru/documentation-api/secure-api/
+     * @param array $POST
+     * @return array
+     */
     private function _signRequest($POST = Array()){
         $all = "";
         foreach($POST as $v){
@@ -111,7 +132,6 @@ class Smartis_API {
      * @return mixed
      */
     private function _curlRequest($method, $POST = Array()){
-        echo '<h1>123</h1>';
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_REFERER, $_SERVER['HTTP_HOST']);
@@ -123,38 +143,30 @@ class Smartis_API {
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($POST, '', '&'));
         }
-        echo '<hr>POST:<pre>'.print_r($POST, true).'</pre>';
+
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
         $html = curl_exec($ch);
-        echo '<hr>Пришел ответ:'.$html;
         curl_close($ch);
 
         RETURN $html;
     }
 
 
-    function getDomainsList($POST = Array()){
+    function getDomains($POST = Array()){
 
         $method = 'getDomains';
         $POST = Array(
-            "client_id"     => (!empty($POST['client_id'])) ? $POST['client_id'] : self::$CLIENT_ID,
+            "client_id" => self::$CLIENT_ID,
         );
 
         RETURN $this->apiRequest($method, $POST);
-
     }
 
     function setTag($POST = Array()){
 
         $method = 'setTag';
-        $POST = Array(
-            "itemId"    => 201640927,
-            "itemType"  => "comagic",
-            "newTag"    => "не клиент",
-            "dateOfUpdate" => GF::getTimeFromShort("02.10.16"),
-        );
 
         RETURN $this->apiRequest($method, $POST);
 
@@ -163,32 +175,6 @@ class Smartis_API {
     function batchSetTag($POST = Array()){
 
         $method = 'batchSetTag';
-        $POST = Array(
-            "items" => Array(
-                Array(
-                    "itemId"    => 20164092700,
-                    "itemType"  => "comagic",
-                    "newTag"    => "не клиент",
-                    "dateOfUpdate" => GF::getTimeFromShort("02.10.16")+3650,
-                ),
-                Array(
-                    "itemId"    => 376354000,
-                    "itemType"  => "scb",
-                    "newTag"    => "В работе",
-                    "dateOfUpdate" => GF::getTimeFromShort("02.10.16"),
-                ),
-            ),
-        );
-
-        RETURN $this->apiRequest($method, $POST);
-
-    }
-    function referrerQuality($POST = Array()){
-
-        $method = 'referrerQuality';
-        $POST = Array(
-            "referrer" => "move.ru"
-        );
 
         RETURN $this->apiRequest($method, $POST);
 

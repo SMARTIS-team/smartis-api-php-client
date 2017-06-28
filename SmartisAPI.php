@@ -9,11 +9,13 @@ class Smartis_API {
 
     //Статичные параметры для одного приложения
     const API_URL       = 'https://stat.smart-is.ru/api/';
-    const API_TOKEN     = 'INSERT_YOUR_SMARTIS_API_TOKEN';
-    const API_SIGNATURE = 'INSERT_YOUR_SMARTIS_API_SIGNATURE';
+
+    const API_TOKEN     = 'INSERT_YOUR_API_TOKEN';
+    const API_SIGNATURE = 'INSERT_YOUR_API_SIGNATURE';
+    const CRM_TOKEN     = 'INSERT_YOUR_CRM_API_TOKEN';
 
     //Одно приложение может работать для нескольких клиентов. Запросите данные у службы поддержки support@smart-is.ru
-    public static $CLIENT_ID    = 'INSERT_YOUR_SMARTIS_CLIENT_ID';
+    public static $CLIENT_ID    = 'INSERT_YOUR_CLIENT_ID';
 
 
     const HTTP_INTERFACE = 'auto'; //'auto': autodetect, 'curl' or 'fopen'
@@ -25,9 +27,11 @@ class Smartis_API {
 
         if(!empty($POST['action']) && preg_match("/[$#&?><\'\"]/" , $POST['action'])==NULL){
 
-            if(method_exists(__CLASS__, $POST['action'])){
-                 $this->$POST['action']($POST);
-            }
+            //if(method_exists(__CLASS__, $POST['action'])){
+            
+                $method = $POST['action'];
+                $this->$method($POST);
+            //}
         }
     }
 
@@ -46,7 +50,7 @@ class Smartis_API {
         $POST['apiToken'] = self::API_TOKEN;
         $POST = $this->_signRequest($POST);
 
-        if (self::HTTP_INTERFACE == 'auto')
+        if (self::HTTP_INTERFACE == "auto")
             $interface = function_exists('curl_exec') ? 'curl' : 'fopen';
         else
             $interface = self::HTTP_INTERFACE;
@@ -56,10 +60,12 @@ class Smartis_API {
         switch ($interface) {
             case 'curl':
                 $this->RESULT = $this->_curlRequest($method, $POST);
+                break;
             case 'fopen':
                 $this->RESULT = $this->_fopenRequest($method, $POST);
+                break;
             default:
-                throw new Exception('Invalid http interface defined. No such interface "' . self::HTTP_INTERFACE . '"');
+                throw new Exception('Invalid http interface defined. No such interface "' . $interface . '"');
         }
 
         RETURN $this->RESULT;
@@ -137,7 +143,7 @@ class Smartis_API {
         curl_setopt($ch, CURLOPT_REFERER, $_SERVER['HTTP_HOST']);
         curl_setopt($ch, CURLOPT_USERAGENT, "Opera/9.80 (Windows NT 5.1; U; ru) Presto/2.9.168 Version/11.51");
         curl_setopt($ch, CURLOPT_URL, self::API_URL . $method. '/');
-
+        //echo '<h1>'.self::API_URL . $method. '/'.'</h1>';
         //добавляем POST параметры если они были переданы в функцию
         if (is_array($POST)) {
             curl_setopt($ch, CURLOPT_POST, true);
@@ -177,6 +183,19 @@ class Smartis_API {
         $method = 'batchSetTag';
 
         RETURN $this->apiRequest($method, $POST);
+
+    }
+
+    function __call($name, $arguments){
+
+        unset($arguments[0]['action']);
+        $arguments = $arguments[0];
+        $arguments["client_id"] = self::$CLIENT_ID;
+
+        //echo '<pre>'.print_r($arguments, true).'</pre>';
+        $method = $name;
+
+        RETURN $this->apiRequest($method, $arguments);
 
     }
 
